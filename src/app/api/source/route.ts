@@ -89,13 +89,14 @@ async function getCompanyInfo(companyName: string, companyLinkedinUrl?: string) 
     }
 
     const data = await response.json();
+    console.log("data", data);
 
     // Save to database if we have LinkedIn URL
-    if (companyLinkedinUrl) {
+    if (companyLinkedinUrl && data) {
       await prisma.company.create({
         data: {
           linkedinUrl: companyLinkedinUrl,
-          data: data
+          data: data // Save the entire response as JSON
         }
       });
     }
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
           type: personData.job_company_type || 'Unknown'
         },
         person: {
-          name: `${personData.full_name || ''}`.trim() || 'Unknown',
+          name: personData.full_name || 'Unknown',
           position: personData.job_title || 'Unknown position',
           location: personData.location_name || personData.job_company_location_name || 'Unknown location',
           seniority: personData.job_title_levels?.[0] || 'Unknown',
