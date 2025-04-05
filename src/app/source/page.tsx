@@ -137,6 +137,12 @@ export default function SourcePage() {
           personName={searchData.person.name}
           personRole={searchData.person.position}
           company={searchData.company.name}
+          personLocation={searchData.person.location}
+          personSeniority={searchData.person.seniority}
+          personHeadline={searchData.person.headline}
+          companySize={searchData.company.employees}
+          companyIndustry={searchData.metrics.industry}
+          companyLocation={searchData.metrics.location}
           onClose={() => setShowChat(false)}
         />
       )}
