@@ -278,22 +278,74 @@ export async function POST(request: Request) {
             `${companyData.data.size}` : 'Unknown employees',
           founded: companyData.data.founded || 'Unknown',
           description: companyData.data.summary || `${companyData.data.name} is a company based in ${companyData.data.location?.name || 'Unknown'}.`,
+          website: companyData.data.website || 'Unknown',
+          linkedin_company_url: companyData.data.linkedin_url || 'Unknown'
         } : {
           name: personData.job_company_name || 'Unknown',
           employees: personData.job_company_size || 'Unknown employees',
           founded: personData.job_company_founded || 'Unknown',
-          description: `${personData.job_company_name || 'Unknown'} is a company in the ${personData.job_company_industry || 'Unknown'} industry.`
+          description: `${personData.job_company_name || 'Unknown'} is a company in the ${personData.job_company_industry || 'Unknown'} industry.`,
+          website: personData.job_company_website || 'Unknown',
+          linkedin_company_url: personData.job_company_linkedin_url || 'Unknown'
         },
         metrics: companyData?.data ? {
           revenueRange: companyData.data.inferred_revenue || 'Unknown',
           location: companyData.data.location?.name || 'Unknown',
           industry: companyData.data.industry || 'Unknown',
-          type: companyData.data.type || 'Unknown'
+          type: companyData.data.type || 'Unknown',
+          headcount: {
+            current: companyData.data.employee_count || 'Unknown',
+            growth_rate: companyData.data.employee_growth_rate || 'Unknown',
+            growth_percentage: companyData.data.employee_growth_percentage || 'Unknown'
+          },
+          revenue: {
+            range: companyData.data.inferred_revenue || 'Unknown',
+            growth_rate: companyData.data.revenue_growth_rate || 'Unknown',
+            growth_percentage: companyData.data.revenue_growth_percentage || 'Unknown'
+          },
+          funding: {
+            total_amount: companyData.data.total_funding_amount || 'Unknown',
+            latest_round: companyData.data.latest_funding_round || 'Unknown',
+            latest_round_date: companyData.data.latest_funding_date || 'Unknown'
+          },
+          technology: {
+            tech_stack: companyData.data.tech_stack || [],
+            primary_technologies: companyData.data.primary_technologies || [],
+            development_tools: companyData.data.development_tools || []
+          },
+          social: {
+            linkedin_followers: companyData.data.linkedin_followers || 'Unknown',
+            twitter_followers: companyData.data.twitter_followers || 'Unknown'
+          }
         } : {
           revenueRange: personData.job_company_inferred_revenue || 'Unknown',
           location: personData.job_company_location_name || 'Unknown',
           industry: personData.job_company_industry || 'Unknown',
-          type: personData.job_company_type || 'Unknown'
+          type: personData.job_company_type || 'Unknown',
+          headcount: {
+            current: personData.job_company_size || 'Unknown',
+            growth_rate: 'Unknown',
+            growth_percentage: 'Unknown'
+          },
+          revenue: {
+            range: personData.job_company_inferred_revenue || 'Unknown',
+            growth_rate: 'Unknown',
+            growth_percentage: 'Unknown'
+          },
+          funding: {
+            total_amount: 'Unknown',
+            latest_round: 'Unknown',
+            latest_round_date: 'Unknown'
+          },
+          technology: {
+            tech_stack: [],
+            primary_technologies: [],
+            development_tools: []
+          },
+          social: {
+            linkedin_followers: 'Unknown',
+            twitter_followers: 'Unknown'
+          }
         },
         person: {
           name: personData.full_name || 'Unknown',

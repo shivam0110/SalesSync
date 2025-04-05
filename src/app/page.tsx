@@ -17,11 +17,11 @@ export default function Home() {
             </p>
           </Link>
 
-          <Link href="/crustdata-copilot"
+          <Link href="https://handmade-marketplace-mahesh68.replit.app/"
             className="flex flex-col items-center p-8 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow">
-            <h2 className="text-2xl font-semibold text-gray-700 mb-4">Crustdata Copilot</h2>
-            <p className="text-gray-600 text-center">
-              Coming soon...
+            <h2 className="text-2xl font-semibold text-gray-700 mb-4">Talk Trails</h2>
+            <p className="text-gray-600 text-center"> 
+              Meeting Journey Summarizer
             </p>
           </Link>
         </div>

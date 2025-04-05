@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,13 +8,13 @@ datasource db {
 }
 
 model Person {
-  id                String   @id @default(cuid())
-  linkedinUrl       String   @unique
-  selling           String?
-  data              Json
-  autobound_insights Json?   @default("{}")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  linkedinUrl        String   @unique
+  selling            String?
+  data               Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  autobound_insights Json?    @default("{}")
 }
 
 model Company {
@@ -36,10 +30,11 @@ model Chat {
   linkedinUrl String
   message     String   @db.Text
   response    String   @db.Text
-  personName  String
-  personRole  String
-  company     String
+  personName  String?
+  personRole  String?
+  company     String?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 
   @@index([linkedinUrl])
 }
@@ -49,12 +44,12 @@ model LinkedinMessage {
   chatId          String   @unique
   linkedinUrl     String
   participantName String
-  lastMessage     String   @db.Text
+  lastMessage     String
   lastMessageDate DateTime
   unreadCount     Int      @default(0)
-  summary         String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  summary         String?
 
   @@index([linkedinUrl])
   @@index([chatId])
