@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert } from '@/components/Alert';
+import { ChatBot } from '@/components/ChatBot';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [newLinkedinUrl, setNewLinkedinUrl] = useState('');
+  const [showChat, setShowChat] = useState(false);
 
   const linkedinUrl = searchParams.get('linkedinUrl');
 
@@ -202,18 +204,33 @@ export default function ProfilePage() {
                 </dl>
               </div>
 
-              <div className="mt-4 text-center">
+              <div className="mt-6 flex justify-between items-center">
                 <button
                   onClick={() => router.push('/profile')}
                   className="text-sm text-indigo-600 hover:text-indigo-500"
                 >
                   Look up a different profile
                 </button>
+                <button
+                  onClick={() => setShowChat(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Conversation Starter
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {showChat && profile && (
+        <ChatBot
+          personName={profile.name}
+          personRole={profile.position}
+          company={profile.company || 'their company'}
+          onClose={() => setShowChat(false)}
+        />
+      )}
     </div>
   );
 } 
