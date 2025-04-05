@@ -40,6 +40,10 @@ export function ChatBot({
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,10 +86,79 @@ export function ChatBot({
     } catch (error) {
       console.error('Failed to send message:', error);
       setError('Failed to send message. Please try again.');
-      // Remove the user's message if we couldn't get a response
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (isSummarizing || messages.length === 0) return;
+    
+    setIsSummarizing(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/chat/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
+          personName,
+          company
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSummary(data.summary);
+      } else {
+        throw new Error(data.error || 'Failed to generate summary');
+      }
+    } catch (error) {
+      console.error('Failed to summarize chat:', error);
+      setError('Failed to generate summary. Please try again.');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleTextToSpeech = async () => {
+    if (!summary || isPlaying) return;
+    
+    try {
+      setIsPlaying(true);
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: summary
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate speech');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+      
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(url);
+        setAudioUrl(null);
+      };
+      audio.play();
+    } catch (error) {
+      console.error('Failed to generate speech:', error);
+      setError('Failed to generate speech. Please try again.');
+      setIsPlaying(false);
     }
   };
 
@@ -135,6 +208,11 @@ export function ChatBot({
   // Start conversation automatically when component mounts
   useEffect(() => {
     handleStartConversation();
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
   }, []);
 
   return (
@@ -142,14 +220,40 @@ export function ChatBot({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Conversation Starter</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleSummarize}
+              disabled={isSummarizing || messages.length === 0}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${
+                isSummarizing || messages.length === 0
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {isSummarizing ? 'Summarizing...' : 'Summarize'}
+            </button>
+            {summary && (
+              <button
+                onClick={handleTextToSpeech}
+                disabled={isPlaying}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  isPlaying
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {isPlaying ? 'Playing...' : 'Play Summary'}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -165,6 +269,13 @@ export function ChatBot({
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {summary && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <h3 className="text-lg font-medium text-blue-900">Chat Summary</h3>
+              <p className="mt-2 text-sm text-blue-700">{summary}</p>
             </div>
           )}
 
@@ -214,13 +325,17 @@ export function ChatBot({
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 min-w-0 rounded-md border border-gray-300 shadow-sm px-4 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               disabled={isLoading}
             />
             <button
               type="submit"
-              disabled={!inputMessage.trim() || isLoading}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              disabled={isLoading || !inputMessage.trim()}
+              className={`px-4 py-2 rounded-lg ${
+                isLoading || !inputMessage.trim()
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
             >
               Send
             </button>
