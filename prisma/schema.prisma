@@ -29,3 +29,16 @@ model Company {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model Chat {
+  id          String   @id @default(cuid())
+  linkedinUrl String
+  message     String   @db.Text
+  response    String   @db.Text
+  personName  String
+  personRole  String
+  company     String
+  createdAt   DateTime @default(now())
+
+  @@index([linkedinUrl])
+}

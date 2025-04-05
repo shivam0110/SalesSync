@@ -137,6 +137,7 @@ export default function SourcePage() {
           personName={searchData.person.name}
           personRole={searchData.person.position}
           company={searchData.company.name}
+          linkedinUrl={searchData.linkedinUrl}
           personLocation={searchData.person.location}
           personSeniority={searchData.person.seniority}
           personHeadline={searchData.person.headline}

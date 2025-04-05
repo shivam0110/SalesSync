@@ -30,6 +30,11 @@ export default function Search({ onSearchComplete }: SearchProps) {
       setLoading(true);
       setError('');
 
+      // First, try to get existing data including chat history
+      const historyResponse = await fetch(`/api/chat/history?linkedinUrl=${encodeURIComponent(linkedinUrl)}`);
+      const historyData = await historyResponse.json();
+
+      // Then get the PDL data
       const response = await fetch('/api/source', {
         method: 'POST',
         headers: {
@@ -41,7 +46,13 @@ export default function Search({ onSearchComplete }: SearchProps) {
       const data = await response.json();
 
       if (data.success) {
-        onSearchComplete(data.data);
+        // Combine PDL data with chat history
+        const combinedData = {
+          ...data.data,
+          linkedinUrl,
+          chatHistory: historyData.success ? historyData.history : []
+        };
+        onSearchComplete(combinedData);
       } else {
         setError(data.error || 'Failed to fetch data');
       }

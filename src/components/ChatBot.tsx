@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ChatBotProps {
   personName: string;
   personRole: string;
   company: string;
+  linkedinUrl: string;
   personLocation?: string;
   personSeniority?: string;
   personHeadline?: string;
@@ -24,6 +25,7 @@ export function ChatBot({
   personName,
   personRole,
   company,
+  linkedinUrl,
   personLocation,
   personSeniority,
   personHeadline,
@@ -35,6 +37,7 @@ export function ChatBot({
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +47,7 @@ export function ChatBot({
     setMessages(prev => [...prev, newMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/chat', {
@@ -56,6 +60,7 @@ export function ChatBot({
           personName,
           personRole,
           company,
+          linkedinUrl,
           personLocation,
           personSeniority,
           personHeadline,
@@ -68,20 +73,25 @@ export function ChatBot({
       const data = await response.json();
       if (data.success) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      } else {
+        throw new Error(data.error || 'Failed to get response');
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
-      }]);
+      setError('Failed to send message. Please try again.');
+      // Remove the user's message if we couldn't get a response
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleStartConversation = async () => {
+    if (isLoading) return;
+    
     setIsLoading(true);
+    setError(null);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -93,6 +103,7 @@ export function ChatBot({
           personName,
           personRole,
           company,
+          linkedinUrl,
           personLocation,
           personSeniority,
           personHeadline,
@@ -106,17 +117,21 @@ export function ChatBot({
       const data = await response.json();
       if (data.success) {
         setMessages([{ role: 'assistant', content: data.message }]);
+      } else {
+        throw new Error(data.error || 'Failed to generate conversation starters');
       }
     } catch (error) {
       console.error('Failed to generate conversation starters:', error);
-      setMessages([{
-        role: 'assistant',
-        content: 'Sorry, I encountered an error generating conversation starters. Please try again.'
-      }]);
+      setError('Failed to generate conversation starters. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Start conversation automatically when component mounts
+  useEffect(() => {
+    handleStartConversation();
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -134,15 +149,28 @@ export function ChatBot({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {messages.length === 0 ? (
-            <div className="text-center">
-              <button
-                onClick={handleStartConversation}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {isLoading ? 'Generating...' : 'Generate Conversation Starters'}
-              </button>
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-pulse flex space-x-2">
+                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+              </div>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -183,6 +211,7 @@ export function ChatBot({
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Type your message..."
               className="flex-1 min-w-0 rounded-md border border-gray-300 shadow-sm px-4 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={isLoading}
             />
             <button
               type="submit"
