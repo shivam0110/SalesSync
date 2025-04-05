@@ -13,6 +13,7 @@ interface ChatBotProps {
   companySize?: string;
   companyIndustry?: string;
   companyLocation?: string;
+  autobound_insights?: any[];
   onClose: () => void;
 }
 
@@ -32,6 +33,7 @@ export function ChatBot({
   companySize,
   companyIndustry,
   companyLocation,
+  autobound_insights,
   onClose
 }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -66,7 +68,8 @@ export function ChatBot({
           personHeadline,
           companySize,
           companyIndustry,
-          companyLocation
+          companyLocation,
+          autobound_insights
         }),
       });
 
@@ -110,6 +113,7 @@ export function ChatBot({
           companySize,
           companyIndustry,
           companyLocation,
+          autobound_insights,
           isInitialPrompt: true
         }),
       });

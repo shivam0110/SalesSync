@@ -228,6 +228,7 @@ export default function ProfilePage() {
           personName={profile.name}
           personRole={profile.position}
           company={profile.company || 'their company'}
+          linkedinUrl={profile.linkedinUrl}
           onClose={() => setShowChat(false)}
         />
       )}

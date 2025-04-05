@@ -144,6 +144,7 @@ export default function SourcePage() {
           companySize={searchData.company.employees}
           companyIndustry={searchData.metrics.industry}
           companyLocation={searchData.metrics.location}
+          autobound_insights={searchData.autobound_insights}
           onClose={() => setShowChat(false)}
         />
       )}

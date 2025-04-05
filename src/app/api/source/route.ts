@@ -4,8 +4,60 @@ import { prisma } from '@/lib/prisma';
 // You should store this in .env.local
 const PDL_API_KEY = process.env.PDL_API_KEY;
 const PDL_BASE_URL = 'https://api.peopledatalabs.com/v5';
+const AUTOBOUND_API_KEY = process.env.AUTOBOUND_API_KEY;
+const AUTOBOUND_BASE_URL = 'https://api.autobound.ai/api/external/generate-insights/v1.2';
 
-async function searchPerson(linkedinUrl: string) {
+interface PDLPersonData {
+  id: string;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  job_title: string;
+  job_company_name: string;
+  job_company_size: string;
+  job_company_industry: string;
+  job_company_location_country: string;
+  job_company_linkedin_url: string;
+  linkedin_url: string;
+  [key: string]: any;
+}
+
+interface AutoboundInsights {
+  linkedinPosts?: any[];
+  podcastAppearances?: any[];
+  awards?: any[];
+  jobOpenings?: any[];
+  newsArticles?: any[];
+  [key: string]: any;
+}
+
+async function getAutoboundInsights(linkedinUrl: string): Promise<AutoboundInsights | null> {
+  try {
+    const response = await fetch(AUTOBOUND_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': AUTOBOUND_API_KEY || '',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contactLinkedinUrl: linkedinUrl
+      })
+    });
+
+    if (!response.ok) {
+      console.error('Autobound API Error:', response.status, response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.insights;
+  } catch (error) {
+    console.error('Autobound Insights Error:', error);
+    return null;
+  }
+}
+
+async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { autobound_insights?: AutoboundInsights }> {
   try {
     // First, check if person exists in database
     const existingPerson = await prisma.person.findUnique({
@@ -14,7 +66,10 @@ async function searchPerson(linkedinUrl: string) {
 
     if (existingPerson) {
       console.log('Person found in database');
-      return existingPerson.data;
+      return {
+        ...(existingPerson.data as PDLPersonData),
+        autobound_insights: existingPerson.autobound_insights as AutoboundInsights
+      };
     }
 
     // If not in database, fetch from PDL
@@ -37,18 +92,25 @@ async function searchPerson(linkedinUrl: string) {
     }
 
     const apiResponse = await response.json();
-    const personData = apiResponse.data;
+    const personData = apiResponse.data as PDLPersonData;
 
-    // Save to database
+    // Get Autobound insights
+    const insights = await getAutoboundInsights(linkedinUrl);
+
+    // Save to database with separate autobound_insights
     await prisma.person.create({
       data: {
         linkedinUrl,
         selling: personData.job_title || null,
-        data: personData
+        data: personData,
+        autobound_insights: insights || {}
       }
     });
 
-    return personData;
+    return {
+      ...personData,
+      autobound_insights: insights || undefined
+    };
   } catch (error) {
     console.error('Person Search Error:', error);
     throw error;

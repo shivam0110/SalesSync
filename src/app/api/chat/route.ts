@@ -6,6 +6,39 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+function formatInsights(insights: any[]) {
+  if (!insights || !Array.isArray(insights)) return '';
+
+  const relevantInsights = insights.filter(insight => {
+    // Filter out insights that aren't useful for conversation
+    if (!insight || !insight.variables) return false;
+    
+    // Include specific insight types that are good for conversation
+    const usefulTypes = ['linkedin', 'podcast', 'receives_award', 'jobOpening', 'news'];
+    return usefulTypes.includes(insight.type) || usefulTypes.includes(insight.subType);
+  });
+
+  return relevantInsights.map(insight => {
+    switch (insight.type) {
+      case 'linkedin':
+        if (insight.variables.first500CharactersOfPost) {
+          return `- Recent LinkedIn Post: "${insight.variables.first500CharactersOfPost.substring(0, 200)}..."`;
+        }
+        break;
+      case 'podcast':
+        return `- Appeared on podcast: ${insight.variables.podcastName || 'Unknown podcast'}`;
+      case 'receives_award':
+        return `- Received award: ${insight.variables.insightAward}`;
+      case 'jobOpening':
+        return `- Company is hiring: ${insight.variables.quantity} ${insight.variables.name}`;
+      case 'news':
+        return `- Recent news: ${insight.variables.insightTitle}`;
+      default:
+        return null;
+    }
+  }).filter(Boolean).join('\n');
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -20,7 +53,8 @@ export async function POST(request: Request) {
       companyIndustry,
       companyLocation,
       isInitialPrompt,
-      linkedinUrl
+      linkedinUrl,
+      autobound_insights
     } = await request.json();
 
     // For initial prompt, we don't need to validate the message content
@@ -55,6 +89,8 @@ export async function POST(request: Request) {
 
     let prompt = '';
     if (isInitialPrompt) {
+      const insightsText = formatInsights(autobound_insights);
+      
       prompt = `You are a sales assistant helping to craft conversation starters with ${personName}, who is a ${personRole} at ${company}.
 
 Additional context about ${personName}:
@@ -67,13 +103,16 @@ ${companySize ? `- Company Size: ${companySize}` : ''}
 ${companyIndustry ? `- Industry: ${companyIndustry}` : ''}
 ${companyLocation ? `- Location: ${companyLocation}` : ''}
 
+Recent activities and insights:
+${insightsText || 'No recent activities found.'}
+
 Previous conversations with this person:
 ${recentChats.map(chat => `
 User: ${chat.message}
 Assistant: ${chat.response}`).join('\n')}
 
 Please provide 3-4 conversation starters that:
-1. Highlight commonalities and potential points of connection
+1. Reference relevant insights from their recent activities when available
 2. Show understanding of their role and industry challenges
 3. Demonstrate value without being too sales-focused
 4. Are personalized based on their background, company, and previous conversations
