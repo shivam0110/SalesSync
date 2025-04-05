@@ -1,3 +1,4 @@
+import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
@@ -30,6 +31,8 @@ export async function GET(request: Request) {
       }
     });
 
+    console.log('chatsResponse', chatsResponse);
+    
     if (!chatsResponse.ok) {
       throw new Error('Failed to fetch chats from Unipile');
     }

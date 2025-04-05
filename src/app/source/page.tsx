@@ -120,6 +120,10 @@ export default function SourcePage() {
             <div className="p-6">
               {searchData?.person?.linkedin_url ? (
                 <LinkedInMessages linkedinUrl={searchData.person.linkedin_url} />
+              ) : searchData ? (
+                <div className="text-center text-gray-500">
+                  No LinkedIn URL available for this person
+                </div>
               ) : (
                 <div className="text-center text-gray-500">
                   Please search for a person first to view their LinkedIn messages

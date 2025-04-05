@@ -12,32 +12,49 @@ interface LinkedInMessage {
   unreadCount: number;
 }
 
+interface ChatMessage {
+  id: string;
+  chatId: string;
+  content: string;
+  createdAt: string;
+  senderId: string;
+  senderName: string;
+}
+
 interface LinkedInMessagesProps {
-  linkedinUrl: string;
+  linkedinUrl?: string;  // Make linkedinUrl optional
 }
 
 export default function LinkedInMessages({ linkedinUrl }: LinkedInMessagesProps) {
-  const [messages, setMessages] = useState<LinkedInMessage[]>([]);
+  const [chats, setChats] = useState<LinkedInMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
-    fetchMessages();
-  }, [linkedinUrl]);
+    fetchChats();
+  }, []); // Remove linkedinUrl dependency to fetch all chats on load
 
-  const fetchMessages = async () => {
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat);
+    }
+  }, [selectedChat]);
+
+  const fetchChats = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/linkedin/messages?linkedinUrl=${encodeURIComponent(linkedinUrl)}`);
+      const response = await fetch('/api/linkedin/messages/chats');  // Remove linkedinUrl parameter
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch LinkedIn messages');
+        throw new Error(data.error || 'Failed to fetch LinkedIn chats');
       }
 
-      setMessages(data.data.chats.map((chat: any) => ({
+      setChats(data.chats.map((chat: any) => ({
         id: chat.id,
         chatId: chat.id,
         participantName: chat.participants[0].name,
@@ -52,11 +69,37 @@ export default function LinkedInMessages({ linkedinUrl }: LinkedInMessagesProps)
     }
   };
 
+  const fetchMessages = async (chatId: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/linkedin/messages/${chatId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch messages');
+      }
+
+      setMessages(data.messages.map((msg: any) => ({
+        id: msg.id,
+        chatId: msg.chat_id,
+        content: msg.content,
+        createdAt: msg.created_at,
+        senderId: msg.sender_id,
+        senderName: msg.sender_name
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendMessage = async () => {
-    if (!selectedChat || !newMessage.trim()) return;
+    if (!selectedChat || !newMessage.trim() || sendingMessage) return;
 
     try {
-      const response = await fetch('/api/linkedin/messages', {
+      setSendingMessage(true);
+      const response = await fetch('/api/linkedin/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -73,34 +116,48 @@ export default function LinkedInMessages({ linkedinUrl }: LinkedInMessagesProps)
         throw new Error(data.error || 'Failed to send message');
       }
 
-      // Update the messages list
-      setMessages(messages.map(msg => 
-        msg.chatId === selectedChat
-          ? { ...msg, lastMessage: newMessage, lastMessageDate: new Date().toISOString() }
-          : msg
+      // Add the new message to the list
+      const newMsg: ChatMessage = {
+        id: data.messageId,
+        chatId: selectedChat,
+        content: newMessage,
+        createdAt: new Date().toISOString(),
+        senderId: 'me',
+        senderName: 'You'
+      };
+      setMessages(prev => [...prev, newMsg]);
+
+      // Update the chat list
+      setChats(prev => prev.map(chat => 
+        chat.chatId === selectedChat
+          ? { ...chat, lastMessage: newMessage, lastMessageDate: new Date().toISOString() }
+          : chat
       ));
+
       setNewMessage('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   const formatDate = (dateString: string) => {
     try {
       const date = parseISO(dateString);
-      return isValid(date) ? format(date, 'MMM d, yyyy') : 'Invalid date';
+      return isValid(date) ? format(date, 'MMM d, yyyy h:mm a') : 'Invalid date';
     } catch (error) {
       return 'Invalid date';
     }
   };
 
-  if (loading) {
+  if (loading && !selectedChat) {
     return <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
     </div>;
   }
 
-  if (error) {
+  if (error && !chats.length) {
     return <div className="text-red-500 p-4">{error}</div>;
   }
 
@@ -108,37 +165,69 @@ export default function LinkedInMessages({ linkedinUrl }: LinkedInMessagesProps)
     <div className="flex h-[600px] border rounded-lg">
       {/* Chats list */}
       <div className="w-1/3 border-r overflow-y-auto">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`p-4 cursor-pointer hover:bg-gray-50 ${
-              selectedChat === message.chatId ? 'bg-gray-100' : ''
-            }`}
-            onClick={() => setSelectedChat(message.chatId)}
-          >
-            <div className="font-semibold">{message.participantName}</div>
-            <div className="text-sm text-gray-600 truncate">{message.lastMessage}</div>
-            <div className="text-xs text-gray-400 mt-1">
-              {formatDate(message.lastMessageDate)}
-            </div>
-            {message.unreadCount > 0 && (
-              <div className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs inline-block mt-1">
-                {message.unreadCount}
-              </div>
-            )}
+        {chats.length === 0 ? (
+          <div className="text-center text-gray-500 p-4">
+            No chats available
           </div>
-        ))}
+        ) : (
+          chats.map((chat) => (
+            <div
+              key={chat.id}
+              className={`p-4 cursor-pointer hover:bg-gray-50 ${
+                selectedChat === chat.chatId ? 'bg-gray-100' : ''
+              }`}
+              onClick={() => setSelectedChat(chat.chatId)}
+            >
+              <div className="font-semibold">{chat.participantName}</div>
+              <div className="text-sm text-gray-600 truncate">{chat.lastMessage}</div>
+              <div className="text-xs text-gray-400 mt-1">
+                {formatDate(chat.lastMessageDate)}
+              </div>
+              {chat.unreadCount > 0 && (
+                <div className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs inline-block mt-1">
+                  {chat.unreadCount}
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Chat window */}
       <div className="flex-1 flex flex-col">
         {selectedChat ? (
           <>
-            <div className="flex-1 p-4 overflow-y-auto">
-              {/* Messages will be displayed here */}
-              <div className="text-center text-gray-500">
-                Messages will appear here
-              </div>
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              {loading ? (
+                <div className="flex justify-center items-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center text-gray-500">No messages yet</div>
+              ) : (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderId === 'me' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`rounded-lg px-4 py-2 max-w-[70%] ${
+                        message.senderId === 'me'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      <div className="text-xs text-opacity-75 mb-1">
+                        {message.senderName}
+                      </div>
+                      <div className="break-words">{message.content}</div>
+                      <div className="text-xs mt-1 opacity-75">
+                        {formatDate(message.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             <div className="p-4 border-t">
               <div className="flex gap-2">
@@ -149,12 +238,18 @@ export default function LinkedInMessages({ linkedinUrl }: LinkedInMessagesProps)
                   placeholder="Type your message..."
                   className="flex-1 border rounded-lg px-4 py-2"
                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  disabled={sendingMessage}
                 />
                 <button
                   onClick={sendMessage}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                  disabled={sendingMessage || !newMessage.trim()}
+                  className={`px-4 py-2 rounded-lg ${
+                    sendingMessage || !newMessage.trim()
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
                 >
-                  Send
+                  {sendingMessage ? 'Sending...' : 'Send'}
                 </button>
               </div>
             </div>

@@ -46,12 +46,13 @@ model Chat {
 
 model LinkedinMessage {
   id              String   @id @default(cuid())
-  chatId          String
+  chatId          String   @unique
   linkedinUrl     String
   participantName String
   lastMessage     String   @db.Text
   lastMessageDate DateTime
   unreadCount     Int      @default(0)
+  summary         String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

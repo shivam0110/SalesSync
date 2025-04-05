@@ -6,6 +6,8 @@ const PDL_API_KEY = process.env.PDL_API_KEY;
 const PDL_BASE_URL = 'https://api.peopledatalabs.com/v5';
 const AUTOBOUND_API_KEY = process.env.AUTOBOUND_API_KEY;
 const AUTOBOUND_BASE_URL = 'https://api.autobound.ai/api/external/generate-insights/v1.2';
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
+const UNIPILE_BASE_URL = 'https://api1.unipile.com:13111/api/v1';
 
 interface PDLPersonData {
   id: string;
@@ -29,6 +31,62 @@ interface AutoboundInsights {
   jobOpenings?: any[];
   newsArticles?: any[];
   [key: string]: any;
+}
+
+interface UnipileData {
+  chats: any[];
+  unreadCount: number;
+  lastMessage?: {
+    content: string;
+    date: string;
+  };
+}
+
+async function getUnipileData(linkedinUrl: string): Promise<UnipileData | null> {
+  try {
+    if (!UNIPILE_API_KEY) {
+      console.warn('Unipile API key not configured');
+      return null;
+    }
+
+    // Get all chats from Unipile
+    const chatsResponse = await fetch(`${UNIPILE_BASE_URL}/chats`, {
+      headers: {
+        'Authorization': `Bearer ${UNIPILE_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!chatsResponse.ok) {
+      console.error('Unipile API Error:', chatsResponse.status, chatsResponse.statusText);
+      return null;
+    }
+
+    const chatsData = await chatsResponse.json();
+
+    // Filter chats for the specific LinkedIn URL
+    const relevantChats = chatsData.data.filter((chat: any) => 
+      chat.participants.some((participant: any) => 
+        participant.linkedin_url === linkedinUrl
+      )
+    );
+
+    // Calculate total unread count and get the last message
+    const unreadCount = relevantChats.reduce((total: number, chat: any) => total + (chat.unread_count || 0), 0);
+    const lastMessage = relevantChats[0]?.last_message ? {
+      content: relevantChats[0].last_message.content,
+      date: relevantChats[0].last_message.created_at
+    } : undefined;
+
+    return {
+      chats: relevantChats,
+      unreadCount,
+      lastMessage
+    };
+  } catch (error) {
+    console.error('Unipile Data Error:', error);
+    return null;
+  }
 }
 
 async function getAutoboundInsights(linkedinUrl: string): Promise<AutoboundInsights | null> {
@@ -57,7 +115,7 @@ async function getAutoboundInsights(linkedinUrl: string): Promise<AutoboundInsig
   }
 }
 
-async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { autobound_insights?: AutoboundInsights }> {
+async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { autobound_insights?: AutoboundInsights | null, unipile_data?: UnipileData | null }> {
   try {
     // First, check if person exists in database
     const existingPerson = await prisma.person.findUnique({
@@ -68,7 +126,8 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
       console.log('Person found in database');
       return {
         ...(existingPerson.data as PDLPersonData),
-        autobound_insights: existingPerson.autobound_insights as AutoboundInsights || {}
+        autobound_insights: existingPerson.autobound_insights as AutoboundInsights || null,
+        unipile_data: await getUnipileData(linkedinUrl)
       };
     }
 
@@ -94,8 +153,11 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
     const apiResponse = await response.json();
     const personData = apiResponse.data as PDLPersonData;
 
-    // Get Autobound insights
-    const insights = await getAutoboundInsights(linkedinUrl);
+    // Get Autobound insights and Unipile data
+    const [insights, unipileData] = await Promise.all([
+      getAutoboundInsights(linkedinUrl),
+      getUnipileData(linkedinUrl)
+    ]);
 
     // Save to database with separate autobound_insights
     const person = await prisma.person.create({
@@ -109,7 +171,8 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
 
     return {
       ...personData,
-      autobound_insights: insights || {}
+      autobound_insights: insights || {},
+      unipile_data: unipileData
     };
   } catch (error) {
     console.error('Person Search Error:', error);
@@ -248,7 +311,12 @@ export async function POST(request: Request) {
             location: exp.company?.location?.name || exp.location_names?.[0] || '',
             description: exp.summary || ''
           }))
-        }
+        },
+        unipile: personData.unipile_data || {
+          chats: [],
+          unreadCount: 0
+        },
+        autobound_insights: personData.autobound_insights || {}
       }
     });
   } catch (error) {
