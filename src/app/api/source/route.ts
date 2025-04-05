@@ -68,7 +68,7 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
       console.log('Person found in database');
       return {
         ...(existingPerson.data as PDLPersonData),
-        autobound_insights: existingPerson.autobound_insights as AutoboundInsights
+        autobound_insights: existingPerson.autobound_insights as AutoboundInsights || {}
       };
     }
 
@@ -98,7 +98,7 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
     const insights = await getAutoboundInsights(linkedinUrl);
 
     // Save to database with separate autobound_insights
-    await prisma.person.create({
+    const person = await prisma.person.create({
       data: {
         linkedinUrl,
         selling: personData.job_title || null,
@@ -109,7 +109,7 @@ async function searchPerson(linkedinUrl: string): Promise<PDLPersonData & { auto
 
     return {
       ...personData,
-      autobound_insights: insights || undefined
+      autobound_insights: insights || {}
     };
   } catch (error) {
     console.error('Person Search Error:', error);
@@ -239,6 +239,7 @@ export async function POST(request: Request) {
           seniority: personData.job_title_levels?.[0] || 'Unknown',
           headline: personData.summary || personData.headline || '',
           photo_url: personData.profile_pic_url || null,
+          linkedin_url: personData.linkedin_url || linkedinUrl || '',
           employment_history: (personData.experience || []).map((exp: any) => ({
             organization: exp.company?.name || '',
             title: exp.title?.name || '',

@@ -99,7 +99,7 @@ export default function Search({ onSearchComplete }: SearchProps) {
               type="url"
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+              className="shadow-sm text-black focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3"
               placeholder="https://linkedin.com/in/..."
               required
             />
@@ -115,7 +115,7 @@ export default function Search({ onSearchComplete }: SearchProps) {
             type="text"
             value={companyDomain}
             onChange={(e) => setCompanyDomain(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="example.com"
             required
           />

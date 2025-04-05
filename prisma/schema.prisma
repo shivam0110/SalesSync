@@ -14,13 +14,13 @@ datasource db {
 }
 
 model Person {
-  id              String   @id @default(cuid())
-  linkedinUrl     String   @unique
-  selling         String?
-  data            Json
-  autobound_insights Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(cuid())
+  linkedinUrl       String   @unique
+  selling           String?
+  data              Json
+  autobound_insights Json?   @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Company {
@@ -42,4 +42,19 @@ model Chat {
   createdAt   DateTime @default(now())
 
   @@index([linkedinUrl])
+}
+
+model LinkedinMessage {
+  id              String   @id @default(cuid())
+  chatId          String
+  linkedinUrl     String
+  participantName String
+  lastMessage     String   @db.Text
+  lastMessageDate DateTime
+  unreadCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([linkedinUrl])
+  @@index([chatId])
 }

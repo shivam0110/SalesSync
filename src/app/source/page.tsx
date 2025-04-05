@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import GoogleCalendar from './components/GoogleCalendar';
 import Search from './components/Search';
 import { ChatBot } from '@/components/ChatBot';
+import GoogleCalendar from './components/GoogleCalendar';
+import LinkedInMessages from '@/components/LinkedInMessages';
 
 export default function SourcePage() {
-  const [activeTab, setActiveTab] = useState('calendar');
+  const [activeTab, setActiveTab] = useState<'search' | 'calendar' | 'linkedin'>('search');
   const [searchData, setSearchData] = useState<any>(null);
   const [showChat, setShowChat] = useState(false);
 
@@ -19,6 +20,16 @@ export default function SourcePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-center space-x-4 mb-8">
           <button
+            onClick={() => setActiveTab('search')}
+            className={`px-4 py-2 rounded-md ${
+              activeTab === 'search'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Search
+          </button>
+          <button
             onClick={() => setActiveTab('calendar')}
             className={`px-4 py-2 rounded-md ${
               activeTab === 'calendar'
@@ -29,21 +40,19 @@ export default function SourcePage() {
             Calendar
           </button>
           <button
-            onClick={() => setActiveTab('search')}
+            onClick={() => setActiveTab('linkedin')}
             className={`px-4 py-2 rounded-md ${
-              activeTab === 'search'
+              activeTab === 'linkedin'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Search
+            LinkedIn Messages
           </button>
         </div>
 
         <div className="bg-white shadow rounded-lg">
-          {activeTab === 'calendar' ? (
-            <GoogleCalendar />
-          ) : (
+          {activeTab === 'search' ? (
             <div className="p-6">
               <Search onSearchComplete={handleSearchComplete} />
               
@@ -66,42 +75,27 @@ export default function SourcePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-4">Person Details</h3>
-                      <dl className="space-y-3">
-                        {searchData.person.seniority && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Seniority</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{searchData.person.seniority}</dd>
-                          </div>
-                        )}
-                        {searchData.person.headline && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Headline</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{searchData.person.headline}</dd>
-                          </div>
-                        )}
-                        {searchData.person.employment_history && searchData.person.employment_history.length > 0 && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Experience</dt>
-                            <dd className="mt-1 space-y-2">
-                              {searchData.person.employment_history.map((job: any, index: number) => (
-                                <div key={index} className="text-sm text-gray-900">
-                                  <p className="font-medium">{job.title}</p>
-                                  <p>{job.organization}</p>
-                                  <p className="text-gray-500">{job.start_date} - {job.end_date || 'Present'}</p>
-                                  {job.description && <p className="text-gray-600 mt-1">{job.description}</p>}
-                                </div>
-                              ))}
-                            </dd>
-                          </div>
-                        )}
+                      <dl className="grid grid-cols-1 gap-4">
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Position</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{searchData.person.position}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Location</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{searchData.person.location}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Seniority</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{searchData.person.seniority}</dd>
+                        </div>
                       </dl>
                     </div>
 
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-4">Company Details</h3>
-                      <dl className="space-y-3">
+                      <dl className="grid grid-cols-1 gap-4">
                         <div>
-                          <dt className="text-sm font-medium text-gray-500">Company Name</dt>
+                          <dt className="text-sm font-medium text-gray-500">Company</dt>
                           <dd className="mt-1 text-sm text-gray-900">{searchData.company.name}</dd>
                         </div>
                         <div>
@@ -112,19 +106,23 @@ export default function SourcePage() {
                           <dt className="text-sm font-medium text-gray-500">Industry</dt>
                           <dd className="mt-1 text-sm text-gray-900">{searchData.metrics.industry}</dd>
                         </div>
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Location</dt>
-                          <dd className="mt-1 text-sm text-gray-900">{searchData.metrics.location}</dd>
-                        </div>
-                        {searchData.company.description && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Description</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{searchData.company.description}</dd>
-                          </div>
-                        )}
                       </dl>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'calendar' ? (
+            <div className="p-6">
+              <GoogleCalendar />
+            </div>
+          ) : (
+            <div className="p-6">
+              {searchData?.person?.linkedin_url ? (
+                <LinkedInMessages linkedinUrl={searchData.person.linkedin_url} />
+              ) : (
+                <div className="text-center text-gray-500">
+                  Please search for a person first to view their LinkedIn messages
                 </div>
               )}
             </div>
@@ -132,12 +130,12 @@ export default function SourcePage() {
         </div>
       </div>
 
-      {showChat && searchData && (
+      {showChat && searchData && searchData.person && searchData.company && (
         <ChatBot
-          personName={searchData.person.name}
-          personRole={searchData.person.position}
-          company={searchData.company.name}
-          linkedinUrl={searchData.linkedinUrl}
+          personName={searchData.person.name || ''}
+          personRole={searchData.person.position || ''}
+          company={searchData.company.name || ''}
+          linkedinUrl={searchData.person.linkedin_url || ''}
           personLocation={searchData.person.location}
           personSeniority={searchData.person.seniority}
           personHeadline={searchData.person.headline}
