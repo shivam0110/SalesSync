@@ -18,6 +18,46 @@ interface LinkedInMessage {
   unreadCount: number;
 }
 
+interface CompanyMetrics {
+  revenueRange: string;
+  location: string;
+  industry: string;
+  type: string;
+  headcount: {
+    current: string;
+    growth_rate: string;
+    growth_percentage: string;
+  };
+  revenue: {
+    range: string;
+    growth_rate: string;
+    growth_percentage: string;
+  };
+  funding: {
+    total_amount: string;
+    latest_round: string;
+    latest_round_date: string;
+  };
+  technology: {
+    tech_stack: string[];
+    primary_technologies: string[];
+    development_tools: string[];
+  };
+  social: {
+    linkedin_followers: string;
+    twitter_followers: string;
+  };
+}
+
+interface CompanyData {
+  name: string;
+  employees: string;
+  founded: string;
+  description: string;
+  website: string;
+  linkedin_company_url: string;
+}
+
 interface SearchProps {
   onSearchComplete: (data: any) => void;
 }
@@ -28,6 +68,8 @@ export default function Search({ onSearchComplete }: SearchProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<string | null>(null);
+  const [companyMetrics, setCompanyMetrics] = useState<CompanyMetrics | null>(null);
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +82,8 @@ export default function Search({ onSearchComplete }: SearchProps) {
       setLoading(true);
       setError('');
       setSummary(null);
+      setCompanyMetrics(null);
+      setCompanyData(null);
 
       // Get LinkedIn messages from database/Unipile
       const messagesResponse = await fetch(`/api/linkedin/messages/chats?linkedinUrl=${encodeURIComponent(linkedinUrl)}`);
@@ -63,6 +107,9 @@ export default function Search({ onSearchComplete }: SearchProps) {
       const data = await response.json();
 
       if (data.success) {
+        setCompanyMetrics(data.data.metrics);
+        setCompanyData(data.data.company);
+
         // Combine all data
         const combinedData = {
           ...data.data,
@@ -180,6 +227,102 @@ export default function Search({ onSearchComplete }: SearchProps) {
           ) : 'Search'}
         </button>
       </form>
+
+      {companyData && companyMetrics && (
+        <div className="mt-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Company Details</h3>
+          <dl className="grid grid-cols-1 gap-4">
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Company</dt>
+              <dd className="mt-1 text-sm text-gray-900">{companyData.name}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Size</dt>
+              <dd className="mt-1 text-sm text-gray-900">{companyData.employees}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Industry</dt>
+              <dd className="mt-1 text-sm text-gray-900">{companyMetrics.industry}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Revenue</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                <div>{companyMetrics.revenue.range}</div>
+                {companyMetrics.revenue.growth_percentage !== 'Unknown' && (
+                  <div className="text-xs text-green-600">
+                    Growth: {companyMetrics.revenue.growth_percentage}
+                  </div>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Headcount Growth</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                <div>Current: {companyMetrics.headcount.current}</div>
+                {companyMetrics.headcount.growth_percentage !== 'Unknown' && (
+                  <div className="text-xs text-green-600">
+                    Growth: {companyMetrics.headcount.growth_percentage}
+                  </div>
+                )}
+              </dd>
+            </div>
+            {companyMetrics.funding.total_amount !== 'Unknown' && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Funding</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  <div>Total: {companyMetrics.funding.total_amount}</div>
+                  {companyMetrics.funding.latest_round !== 'Unknown' && (
+                    <div className="text-xs text-gray-600">
+                      Latest Round: {companyMetrics.funding.latest_round}
+                      {companyMetrics.funding.latest_round_date !== 'Unknown' && (
+                        ` (${new Date(companyMetrics.funding.latest_round_date).toLocaleDateString()})`
+                      )}
+                    </div>
+                  )}
+                </dd>
+              </div>
+            )}
+            {companyMetrics.technology.tech_stack.length > 0 && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Tech Stack</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  <div className="flex flex-wrap gap-1">
+                    {companyMetrics.technology.tech_stack.map((tech: string, index: number) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Social Presence</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                <div className="flex space-x-4">
+                  <div>
+                    <span className="text-gray-500">LinkedIn:</span>{' '}
+                    {companyMetrics.social.linkedin_followers !== 'Unknown' 
+                      ? `${companyMetrics.social.linkedin_followers} followers`
+                      : 'N/A'
+                    }
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Twitter:</span>{' '}
+                    {companyMetrics.social.twitter_followers !== 'Unknown'
+                      ? `${companyMetrics.social.twitter_followers} followers`
+                      : 'N/A'
+                    }
+                  </div>
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
     </div>
   );
 } 

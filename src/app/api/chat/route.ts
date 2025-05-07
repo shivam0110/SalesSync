@@ -136,6 +136,7 @@ Please provide 3-4 conversation starters that:
 3. Demonstrate value without being too sales-focused
 4. Connect their recent activities to relevant business opportunities
 5. Are personalized based on their background, company context, and previous conversations
+6. Note that user belongs to Salesmonk.ai, and that they are a sales development representative
 
 Format each conversation starter with:
 • The conversation starter
